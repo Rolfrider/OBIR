@@ -119,3 +119,66 @@ uint16_t CoAP::sendPacket(CoAPPacket &packet, IPAddress ip, int port){
 
 }
 
+uint16_t CoAP::get(IPAddress ip, int port, char *url, COAP_TYPE type){
+    return this->send(ip, port, url, type, GET, NULL, 0, NULL, 0);
+}
+
+uint16_t CoAP::get(IPAddress ip, int port, char *url{
+    return this->send(ip, port, url, CON, GET, NULL, 0, NULL, 0);
+}
+
+uint16_t CoAP::put(IPAddress ip, int port, char *url, char *payload , COAP_TYPE type){
+    return this->send(ip, port, url, type, PUT, NULL, 0, (uint8_t *)payload, strlen(payload));
+}
+
+uint16_t CoAP::put(IPAddress ip, int port, char *url, char *payload ){
+    return this->send(ip, port, url, CON, PUT, NULL, 0, (uint8_t *)payload, strlen(payload));
+}
+
+uint16_t CoAP::put(IPAddress ip, int port, char *url, char *payload, int payloadLen ){
+    return this->send(ip, port, url, CON, PUT, NULL, 0, (uint8_t *)payload, payloadLen);
+}
+
+uint16_t CoAP::send(IPAddress ip, int port, char *url, COAP_TYPE type, COAP_METHOD method,
+                    uint8_t *token, uint8_t tokenLen, uint8_t *payload, uint32_t payloadLen){
+    
+    // tworzenie pakietu
+    CoAPPacket packet;
+    packet.type = type;
+    packet.code = method;
+    packet.token = token;
+    packet.tokenLen = tokenLen;
+    packet.payload = payload;
+    packet.payloadLen = payloadLen;
+    packet.optionNum = 0;
+    packet.messageId = rand();
+
+    // dodajemy Opcje URI_HOST
+    String ipaddress = String(ip[0]) + String(".") + String(ip[1]) + String(".") + String(ip[2]) + String(".") + String(ip[3]); 
+    packet.options[packet.optionNum].buffer = (uint8_t *)ipaddress.c_str();
+    packet.options[packet.optionNum].length = ipaddress.length();
+    packet.options[packet.optionNum].number = URI_HOST;
+    packet.optionNum++;
+
+    int idx = 0;
+    for (int i = 0; i < strlen(url); i++) {
+        if (url[i] == '/') {
+            packet.options[packet.optionNum].buffer = (uint8_t *)(url + idx); // zapisuje wskaxnik
+            packet.options[packet.optionNum].length = i - idx; // id zasobu
+            packet.options[packet.optionNum].number = URI_PATH;
+            packet.optionNum++;
+            idx = i + 1;
+        }
+    }
+        // ostatnie id
+    if (idx <= strlen(url)) {
+        packet.options[packet.optionNum].buffer = (uint8_t *)(url + idx);
+        packet.options[packet.optionNum].length = strlen(url) - idx;
+        packet.options[packet.optionNum].number = URI_PATH;
+        packet.optionNum++;
+    }
+
+    // wysłanie
+    return this->sendPacket(packet, ip, port);
+
+}

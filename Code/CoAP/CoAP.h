@@ -166,9 +166,14 @@ class CoAP
         uint16_t sendResponse(IPAddress ip, int port, uint16_t messageId, char *payload, int payloadLen);
         uint16_t sendResponse(IPAddress ip, int port, uint16_t messageId, char *payload, int payloadLen, uint8_t responseCode, COAP_CONTENT_TYPE type, uint8_t *token, int tokenLen);
         
+        uint16_t get(IPAddress ip, int port, char *url, COAP_TYPE type);
         uint16_t get(IPAddress ip, int port, char *url);
+        
+        uint16_t put(IPAddress ip, int port, char *url, char *payload, COAP_TYPE type);
         uint16_t put(IPAddress ip, int port, char *url, char *payload);
         uint16_t put(IPAddress ip, int port, char *url, char *payload, int payloadLen);
+
+
         uint16_t send(IPAddress ip, int port, char *url, COAP_TYPE type, COAP_METHOD method, uint8_t *token, uint8_t tokenLen, uint8_t *payload, uint32_t payloadLen);
 
         bool loop();
