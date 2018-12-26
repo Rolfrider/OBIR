@@ -10,6 +10,7 @@ Kod pod wpływem duzej inspiracji z reposytorium: https://github.com/hirotakaste
 
 #define HEADER_SIZE 4
 #define OPTION_HEADER_SIZE 1
+#define TOKEN_MAX_SIZE 0x0F
 #define PAYLOAD_MARKER 0xFF
 #define MAX_OPTION_NUM 10
 #define BUF_MAX_SIZE 50
@@ -21,10 +22,13 @@ Przyklad:  0011 0010 << 2 => 1100 1000
 | - bitowy OR 
 Przyklad: A = 0101, B = 1100  A | B = 1101 */
 #define RESPONSE_CODE(class, detail) ((class << 5) | (detail))
-// 0xFF - 0x, ze hex FF = 255
+// 0xFF - 0x, ze hex FF = 255 = 1111 1111
 // & - bitowy AND
-//Przyklad: A = 0101, B = 1100  A & B = 0100 */
-#define OPTION_DELTA(v, n) (v < 13 ? (*n = (0xFF & v)) : (v <= 0xFF + 13 ? (*n = 13) : (*n = 14))
+//Przyklad: A = 0101, B = 1100  A & B = 0100
+// OPTION_DELTA sprawdza gdzie znajduje się delta jeśli <13 to w pierwszym bajcie
+// jesli 13 < delta < 255 + 13 to delta = 13 
+// delta > 255 + 13, delta = 14
+#define OPTION_DELTA(v, n) (v < 13 ? (*n = (0xFF & v)) : (v <= 0xFF + 13 ? (*n = 13) : (*n = 14)))
 
 #include "Arduino.h"
 
@@ -90,24 +94,25 @@ class CoAPPacket {
     uint8_t type;
     uint8_t code;
     uint8_t *token;
-    uint8_t tokenlen;
+    uint8_t tokenLen;
     uint8_t *payload;
-    uint8_t payloadlen;
-    uint16_t messageid;
+    uint8_t payloadLen;
+    uint16_t messageId;
     
-    uint8_t optionnum;
+    uint8_t optionNum;
     CoAPOption options[MAX_OPTION_NUM];
 };
 
-
+// Tworzy alias dla funkcji callback ktora bierze podane argumenty i nie zwraca nic (void)
 typedef void (*callback)(CoAPPacket &, IPAddress, int);
 
-class CoapUri {
+class CoAPUri {
     private:
         String u[MAX_CALLBACK];
         callback c[MAX_CALLBACK];
     public:
-        CoapUri() {
+        CoAPUri() {
+          //Przypisuje do tablic puste wartosci
             for (int i = 0; i < MAX_CALLBACK; i++) {
                 u[i] = "";
                 c[i] = NULL;
@@ -139,13 +144,13 @@ class CoAP
 {
   private:
         UDP *_udp;
-        CoapUri uri;
+        CoAPUri uri;
         callback resp;
         int _port;
 
         uint16_t sendPacket(CoAPPacket &packet, IPAddress ip);
         uint16_t sendPacket(CoAPPacket &packet, IPAddress ip, int port);
-        int parseOption(CoAPOption *option, uint16_t *running_delta, uint8_t **buf, size_t buflen);
+        int parseOption(CoAPOption *option, uint16_t *running_delta, uint8_t **buf, size_t bufLen);
 
     public:
         CoAP(
