@@ -1,0 +1,1 @@
+D:\Arduino\hardware\tools\avr\bin\avrdude.exe -C D:\Arduino\hardware\tools\avr\etc\avrdude.conf -c arduino -p atmega328p -P com4 -b 57600 -U flash:w:mini.ino.hex:i
