@@ -28,7 +28,7 @@ uint16_t CoAP::sendPacket(CoAPPacket &packet, IPAddress ip)
 uint16_t CoAP::sendPacket(CoAPPacket &packet, IPAddress ip, int port)
 {
     uint8_t buffer[BUF_MAX_SIZE];
-    uint8_t *p = buffer; // pakiet wskazuje na poczatek bufferu
+    uint8_t *p = buffer; // pakiet wskazuje na poczatek bufforu
     uint16_t running_delta = 0;
     uint16_t packetSize = 0;
     //|     Code       |
@@ -292,7 +292,7 @@ bool CoAP::loop()
             }
             packet.optionNum = optionIndex;
 
-            if (p + 1 < end && *p == 0xFF)
+            if (p + 1 < end && *p == 0xFF) // czy jest co najmniej bit payloadu
             {
                 packet.payload = p + 1;
                 packet.payloadLen = end - (p + 1);

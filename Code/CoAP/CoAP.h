@@ -88,6 +88,7 @@ typedef enum
     URI_HOST = 3,
     E_TAG = 4,
     IF_NONE_MATCH = 5,
+    OBSERVE = 6,
     URI_PORT = 7,
     LOCATION_PATH = 8,
     URI_PATH = 11,
