@@ -9,7 +9,8 @@ byte mac[] = {0x00, 0xAA, 0xBB, 0xCC, 0xDE, 0x02};
 
 String lightEndPoint = "light";
 String keyboardEndPoint = "keyboard";
-String wellKnownEndPoint = "light";
+String wellKnownEndPoint = ".well-known/core";
+String statisticsEndPoint = "statistics";
 
 // CoAP client response callback
 void callback_response(CoAPPacket &packet, IPAddress ip, int port);
@@ -17,14 +18,30 @@ void callback_response(CoAPPacket &packet, IPAddress ip, int port);
 // CoAP server endpoint url callback
 void callback_light(CoAPPacket &packet, IPAddress ip, int port);
 
-Observer[5] observers;
+void callback_wellKnown(CoAPPacket &packet, IPAddress ip, int port);
+
+void callback_keyboard(CoAPPacket &packet, IPAddress ip, int port);
+
+void callback_statistics(CoAPPacket &packet, IPAddress ip, int port);
 
 struct Observer
 {
-    IPAddress ip,
-        int port,
-        int counter
-}
+    IPAddress ip;
+    int port;
+    int counter;
+};
+
+//for ETAG
+struct Resource
+{
+    String main;
+    String value;
+    uint8_t tag;
+};
+
+Observer observers[5];
+
+Resource resources[4];
 // UDP and CoAP class
 EthernetUDP Udp;
 CoAP coap(Udp);
@@ -74,15 +91,23 @@ void callback_wellKnown(CoAPPacket &packet, IPAddress ip, int port)
 {
     Serial.println("well know");
 
-    String payload = wellKnownEndPoint + "informations about endpoints\n" +
-                     lightEndPoint + "Can light the lamp on(1) or off(0) with PUT method, or check the lamp state with get\n" +
-                     keyboardEndPoint + "Response to GET calls to be or not observed";
+    String payload = wellKnownEndPoint + " informations about endpoints\n" +
+                     lightEndPoint + " Can light the lamp on(1) or off(0) with PUT method, or check the lamp state with get\n" +
+                     keyboardEndPoint + " Response to GET calls to be or not observed\n" +
+                     statisticsEndPoint + " Set of radio connection statistics ";
 
     Serial.println("Size of response payload" + sizeof(payload));
 
-    coap.sendResponse(ip, port, packet.messageId, payload);
+    coap.sendResponse(ip, port, packet.messageId, payload.c_str());
+}
 
-    Serial.println(p);
+void callback_statistics(CoAPPacket &packet, IPAddress ip, int port)
+{
+    Serial.println("Statistics");
+
+    // prosi o statystyki
+
+    coap.sendResponse(ip, port, packet.messageId, " statistics placeholder");
 }
 
 void callback_keyboard(CoAPPacket &packet, IPAddress ip, int port)
@@ -91,15 +116,15 @@ void callback_keyboard(CoAPPacket &packet, IPAddress ip, int port)
 
     if (packet.code == GET)
     {
-        for (int i = 0; i < packet.options.length; i++)
+        for (int i = 0; i < sizeof(packet.options); i++)
         {
-            if (packet.options[i] == NULL)
+            if (packet.options[i].number == 0)
             {
                 continue;
             }
             if (packet.options[i].number == 6)
             {
-                if (packet.options[i].*buffer == 0)
+                if (packet.options[i].buffer == 0)
                 {
                     // dodaj obserwatora
                     addObserver(ip, port);
@@ -118,24 +143,28 @@ void callback_keyboard(CoAPPacket &packet, IPAddress ip, int port)
 
 void addObserver(IPAddress ip, int port)
 {
-    for (int i = 0; i < observers.length; i++)
+    for (int i = 0; i < sizeof(observers); i++)
     {
-        if (observers[i] == null)
+        // Observer jest incjalizowany z {0,0,0}
+        if (observers[i].port == 0 || observers[i].counter == -1)
         {
-            observers[i] = new Observer(ip, port, 0);
+            observers[i].ip = ip;
+            observers[i].port = port;
+            observers[i].counter = 0;
         }
     }
-
-    observers[0] = new Observer(ip, port, 0);
+    observers[0].ip = ip;
+    observers[0].port = port;
+    observers[0].counter = 0;
 }
 
 void removeObserver(IPAddress ip, int port)
 {
-    for (int i = 0; i < observers.length; i++)
+    for (int i = 0; i < sizeof(observers); i++)
     {
         if (observers[i].ip == ip)
         {
-            observers[i] = null;
+            observers[i].counter = -1;
         }
     }
 }
@@ -143,7 +172,7 @@ void removeObserver(IPAddress ip, int port)
 void setup()
 {
 
-    observers = new Observer[5] Serial.begin(9600);
+    Serial.begin(9600);
 
     Ethernet.begin(mac);
     Serial.print("My IP address: ");
@@ -162,6 +191,7 @@ void setup()
     coap.server(callback_light, lightEndPoint);
     coap.server(callback_keyboard, keyboardEndPoint);
     coap.server(callback_wellKnown, wellKnownEndPoint);
+    coap.server(callback_statistics, statisticsEndPoint);
 
     // start coap server/client
     coap.start();
@@ -178,9 +208,3 @@ void loop()
     delay(1000);
     coap.loop();
 }
-/*
-if you change LED, req/res test with coap-client(libcoap), run following.
-coap-client -m get coap://(arduino ip addr)/light
-coap-client -e "1" -m put coap://(arduino ip addr)/light
-coap-client -e "0" -m put coap://(arduino ip addr)/light
-*/
