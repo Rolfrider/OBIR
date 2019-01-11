@@ -5,11 +5,14 @@
 #include <Ethernet.h>
 #include <EthernetUdp.h>
 
+//TODO: Powiadomienie obserwatora i counter++
+// ETAG do zaiplementowania
+
 byte mac[] = {0x00, 0xAA, 0xBB, 0xCC, 0xDE, 0x02};
 
 String lightEndPoint = "light";
 String keyboardEndPoint = "keyboard";
-String wellKnownEndPoint = ".well-known/core";
+String wellKnownEndPoint = ".well- known/core";
 String statisticsEndPoint = "statistics";
 
 // CoAP client response callback
@@ -28,20 +31,21 @@ struct Observer
 {
     IPAddress ip;
     int port;
+    uint8_t token;
     int counter;
 };
 
 //for ETAG
 struct Resource
 {
-    String main;
+    String name;
     String value;
     uint8_t tag;
 };
 
 Observer observers[5];
 
-Resource resources[4];
+Resource resources[3];
 // UDP and CoAP class
 EthernetUDP Udp;
 CoAP coap(Udp);
@@ -91,13 +95,14 @@ void callback_wellKnown(CoAPPacket &packet, IPAddress ip, int port)
 {
     Serial.println("well know");
 
+    // link-format
     String payload = wellKnownEndPoint + " informations about endpoints\n" +
                      lightEndPoint + " Can light the lamp on(1) or off(0) with PUT method, or check the lamp state with get\n" +
                      keyboardEndPoint + " Response to GET calls to be or not observed\n" +
                      statisticsEndPoint + " Set of radio connection statistics ";
 
     Serial.println("Size of response payload" + sizeof(payload));
-
+    // todo: new sendResponse with link-format
     coap.sendResponse(ip, port, packet.messageId, payload.c_str());
 }
 
@@ -127,7 +132,7 @@ void callback_keyboard(CoAPPacket &packet, IPAddress ip, int port)
                 if (packet.options[i].buffer == 0)
                 {
                     // dodaj obserwatora
-                    addObserver(ip, port);
+                    addObserver(ip, port, packet.token);
                     break;
                 }
                 else
@@ -141,7 +146,7 @@ void callback_keyboard(CoAPPacket &packet, IPAddress ip, int port)
     }
 }
 
-void addObserver(IPAddress ip, int port)
+void addObserver(IPAddress ip, int port, uint8_t token)
 {
     for (int i = 0; i < sizeof(observers); i++)
     {
@@ -151,11 +156,13 @@ void addObserver(IPAddress ip, int port)
             observers[i].ip = ip;
             observers[i].port = port;
             observers[i].counter = 0;
+            observers[i].token = token;
         }
     }
     observers[0].ip = ip;
     observers[0].port = port;
     observers[0].counter = 0;
+    observers[0].token = token;
 }
 
 void removeObserver(IPAddress ip, int port)
@@ -187,7 +194,7 @@ void setup()
 
     // add server url endpoints.
     // can add multiple endpoint urls.
-    Serial.println("Setup Callback Light");
+    Serial.println("Setup Callbacks");
     coap.server(callback_light, lightEndPoint);
     coap.server(callback_keyboard, keyboardEndPoint);
     coap.server(callback_wellKnown, wellKnownEndPoint);
@@ -199,11 +206,7 @@ void setup()
 
 void loop()
 {
-    // send GET or PUT coap request to CoAP server.
-    // To test, use libcoap, microcoap server...etc
-    // int msgid = coap.put(IPAddress(10, 0, 0, 1), 5683, "light", "1");
     Serial.println("Send Request");
-    //int msgid = coap.get(IPAddress(XXX, XXX, XXX, XXX), 5683, "time");
 
     delay(1000);
     coap.loop();
