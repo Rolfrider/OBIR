@@ -346,6 +346,7 @@ bool CoAP::loop()
     return true;
 }
 
+
 uint16_t CoAP::sendResponse(IPAddress ip, int port, uint16_t messageId)
 {
     this->sendResponse(ip, port, messageId, NULL, 0, CONTENT, TEXT_PLAIN, NULL, 0);

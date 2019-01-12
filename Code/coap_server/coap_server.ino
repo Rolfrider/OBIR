@@ -134,11 +134,11 @@ void callback_wellKnown(CoAPPacket &packet, IPAddress ip, int port)
     Serial.println(F("well know"));
 
     // link-format
-    String payload = "link-format";
+    String payload = "</light>;rt=\"state of lamp\";ct=0,</keyboard>;rt=\"returns input from keyboard if occures\";ct=0;obs,</statistics>;rt=\"values of 3 radio network statistics\";ct=0";
     
     Serial.println("Size of response payload" + sizeof(payload));
     // todo: new sendResponse with link-format
-    coap.sendResponse(ip, port, packet.messageId, payload.c_str());
+    coap.sendResponse(ip, port, packet.messageId, payload.c_str(), strlen(payload.c_str()), CONTENT, APPLICATION_LINK_FORMAT, NULL, 0);
 }
 
 void callback_statistics(CoAPPacket &packet, IPAddress ip, int port)
@@ -191,6 +191,7 @@ void setup()
     SPI.begin();
     radio.begin();
     network.begin(OUR_CHANNEL, THIS_NODE_ID);
+    
     
     Ethernet.begin(mac);
     Serial.print(F("My IP address: "));
