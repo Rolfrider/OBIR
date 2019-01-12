@@ -104,14 +104,6 @@ void callback_light(CoAPPacket &packet, IPAddress ip, int port)
 
     if (packet.code == GET)
     {
-<<<<<<< HEAD
-        // zapytać mini o lampke jak jest tylko problem bo trzeba czekać na odpowiedź
-        if(isLampOn){
-            coap.sendResponse(ip, port, packet.messageId, "1");
-        }else{
-            coap.sendResponse(ip, port, packet.messageId, "0");
-        }
-=======
         for (int i = 0; i < sizeof(packet.options); i++)
         {
             if (packet.options[i].number == 0)
@@ -127,14 +119,13 @@ void callback_light(CoAPPacket &packet, IPAddress ip, int port)
                 }
                 else
                 {
-                    coap.sendResponse(ip, port, packet.messageId, resources[0].val);
+                    coap.sendResponse(ip, port, packet.messageId, resources[0].value.c_str());
                     return;
                 }
             }
         }
 
-        coap.sendResponse(ip, port, packet.messageId, resources[0].val);
->>>>>>> e886b53cc812d73e490a3f3841899d7086fe9534
+        coap.sendResponse(ip, port, packet.messageId, resources[0].value.c_str());
     }
     if (packet.code == PUT)
     {
@@ -261,7 +252,6 @@ void loop()
     }
 }
 
-<<<<<<< HEAD
 void getAllResOnStart(){
     Serial.println(F("Sending initial request."));
     payload_t payload {millis(), ALL, GETrf};
@@ -272,13 +262,6 @@ void getLampState(){
   Serial.println(F("Sending lamp state request."));
   payload_t payload {millis(), LAMP, GETrf};
   send(payload);
-=======
-void getLampState()
-{
-    Serial.println(F("Sending lamp state request."));
-    payload_t payload{millis(), LAMP, GETrf};
-    send(payload);
->>>>>>> e886b53cc812d73e490a3f3841899d7086fe9534
 }
 
 void setLampState(char state)
@@ -303,46 +286,10 @@ void getKeyboardState()
     send(payload);
 }
 
-<<<<<<< HEAD
-void handlePayload(payload_t payload){
-    sizeOfReceivedMessages += sizeof(payload);
-    numberOfReceivedMessages++;
-    Serial.print(F("MESSAGE: "));
-    switch (payload.resource) {
-       case LAMP:
-         Serial.print(F("Lamp is "));
-         switch (payload.value) {
-           case ON:
-             isLampOn = true;
-             Serial.println(F("on."));
-             break;
-           case OFF:
-             isLampOn = false;
-             Serial.println(F("off."));
-             break;
-           default:
-             Serial.println(F("(Unknown lamp state!)."));
-             break;
-         }
-         break;
-       case KEYBOARD:
-          lastKeyPressed = payload.value;
-          Serial.print(F("Keyboard's last key pressed is \""));
-          Serial.print(payload.value);
-          Serial.println(F("\""));
-          break;
-       default:
-         Serial.println(F("Unknown message"));
-         break;
-  }
-}
-
-bool send(payload_t payload){
-    sizeOfSentMessages += sizeof(payload);
-    numberOfSentMessages++;
-=======
 void handlePayload(payload_t payload)
 {
+    sizeOfReceivedMessages += sizeof(payload);
+    numberOfReceivedMessages++;
     Serial.print(F("MESSAGE: "));
     switch (payload.resource)
     {
@@ -385,7 +332,8 @@ void handlePayload(payload_t payload)
 
 bool send(payload_t payload)
 {
->>>>>>> e886b53cc812d73e490a3f3841899d7086fe9534
+    sizeOfSentMessages += sizeof(payload);
+    numberOfSentMessages++;
     Serial.print(F("Sending..."));
     RF24NetworkHeader header(OTHER_NODE_ID);
     bool ok = network.write(header, &payload, sizeof(payload));
