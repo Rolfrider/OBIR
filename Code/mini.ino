@@ -14,8 +14,9 @@ const unsigned long interval = 10000; //ms  // How often to send
 unsigned long last_sent;             // when did we last send?
 
 //payload resources
-const int LAMP = 0;
-const int KEYBOARD = 1;
+const int ALL = 0;
+const int LAMP = 1;
+const int KEYBOARD = 2;
 //payload values
 const char GET = 'g';
 const char OFF = '0';
@@ -50,6 +51,8 @@ void setup() {
   pinMode(A0, OUTPUT);              // lamp on/off pin
   digitalWrite(A0, HIGH);           // setting lamp off at start
   Serial.println("############# OBIR PROJECT: ARDUINO MINI PRO #############");
+  sendLampState();
+  sendKeyboardState();
 }
 
 void loop() {
@@ -108,6 +111,11 @@ bool handlePayload(payload_t payload){
        case KEYBOARD:
           Serial.println("Keyboard get.");
           sendKeyboardState();
+          break;
+        case ALL:
+          Serial.println("All get.");
+          sendKeyboardState();
+          sendLampState();
           break;
        default:
          Serial.println("Unknown resource request!");

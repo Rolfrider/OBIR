@@ -8,7 +8,6 @@
 #include <RF24.h>
 
 //TODO: Powiadomienie obserwatora i counter++
-//TODO: GET lamp state musi czekać na odpowiedź
 //TODO: zwrocenia stanu klawiatury
 //ETAG do zaiplementowania
 
@@ -69,11 +68,10 @@ struct Resource
     uint8_t tag;
 };
 
-
-
 //payload resources
-const int LAMP = 0;
-const int KEYBOARD = 1;
+const int ALL = 0;
+const int LAMP = 1;
+const int KEYBOARD = 2;
 //payload values
 const char GETrf = 'g';
 const char OFF = '0';
@@ -89,6 +87,11 @@ CoAP coap(Udp);
 RF24 radio(7,8);                // nRF24L01(+) radio CE and CSN to 7th and 8th port 
 RF24Network network(radio);      // network uses that radio
 
+uint8_t numberOfReceivedMessages = 0;
+uint8_t numberOfSentMessages = 0;
+size_t sizeOfReceivedMessages = 0;
+size_t sizeOfSentMessages = 0;
+
 char lastKeyPressed = '0';
 bool isLampOn = false;
 
@@ -100,9 +103,11 @@ void callback_light(CoAPPacket &packet, IPAddress ip, int port)
     if (packet.code == GET)
     {
         // zapytać mini o lampke jak jest tylko problem bo trzeba czekać na odpowiedź
-        //getLampState();
-
-        coap.sendResponse(ip, port, packet.messageId, "" /* Wartośc lampki*/);
+        if(isLampOn){
+            coap.sendResponse(ip, port, packet.messageId, "1");
+        }else{
+            coap.sendResponse(ip, port, packet.messageId, "0");
+        }
     }
     if (packet.code == PUT)
     {
@@ -182,7 +187,6 @@ void callback_keyboard(CoAPPacket &packet, IPAddress ip, int port)
     }
 }
 
-
 void setup()
 {
     Serial.begin(115200);
@@ -211,6 +215,7 @@ void setup()
 
     // start coap server/client
     coap.start();
+    getAllResOnStart();
 }
 
 void loop()
@@ -227,6 +232,12 @@ void loop()
       handlePayload(payload);
     }
 }
+
+void getAllResOnStart(){
+    Serial.println(F("Sending initial request."));
+    payload_t payload {millis(), ALL, GETrf};
+    send(payload);
+} 
 
 void getLampState(){
   Serial.println(F("Sending lamp state request."));
@@ -252,8 +263,10 @@ void getKeyboardState(){
 }
 
 void handlePayload(payload_t payload){
-Serial.print(F("MESSAGE: "));
-  switch (payload.resource) {
+    sizeOfReceivedMessages += sizeof(payload);
+    numberOfReceivedMessages++;
+    Serial.print(F("MESSAGE: "));
+    switch (payload.resource) {
        case LAMP:
          Serial.print(F("Lamp is "));
          switch (payload.value) {
@@ -283,6 +296,8 @@ Serial.print(F("MESSAGE: "));
 }
 
 bool send(payload_t payload){
+    sizeOfSentMessages += sizeof(payload);
+    numberOfSentMessages++;
     Serial.print(F("Sending..."));
     RF24NetworkHeader header(OTHER_NODE_ID);
     bool ok = network.write(header,&payload,sizeof(payload));
