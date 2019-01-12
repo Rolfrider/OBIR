@@ -35,6 +35,17 @@ void callback_keyboard(CoAPPacket &packet, IPAddress ip, int port);
 
 void callback_statistics(CoAPPacket &packet, IPAddress ip, int port);
 
+bool send(payload_t payload);
+
+void handlePayload(payload_t payload);
+
+void getKeyboardState();
+
+void setLampState(char state);
+
+void getLampState();
+
+
 struct Observer
 {
     IPAddress ip;
@@ -62,7 +73,7 @@ struct payload_t {                 // structure of our payload
 const int LAMP = 0;
 const int KEYBOARD = 1;
 //payload values
-const char GET = 'g';
+const char GETrf = 'g';
 const char OFF = '0';
 const char ON = '1';
 
@@ -248,7 +259,7 @@ void loop()
 
 void getLampState(){
   Serial.println("Sending lamp state request.");
-  payload_t payload {millis(), LAMP, GET};
+  payload_t payload {millis(), LAMP, GETrf};
   send(payload);
 }
 
@@ -265,7 +276,7 @@ void setLampState(char state){  // ON or OFF
 
 void getKeyboardState(){
   Serial.println("Sending keyboard state request.");
-  payload_t payload {millis(), KEYBOARD, GET};
+  payload_t payload {millis(), KEYBOARD, GETrf};
   send(payload);
 }
 
