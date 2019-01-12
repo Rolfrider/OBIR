@@ -23,6 +23,13 @@ String keyboardEndPoint = "keyboard";
 String wellKnownEndPoint = ".well- known/core";
 String statisticsEndPoint = "statistics";
 
+//for radiocommunication
+struct payload_t {                 // structure of our payload
+  unsigned long ms;
+  unsigned int resource; //0-lamp 1-keyboard
+  char value; //g-get 0-off 1-on
+};
+
 // CoAP client response callback
 void callback_response(CoAPPacket &packet, IPAddress ip, int port);
 
@@ -62,12 +69,7 @@ struct Resource
     uint8_t tag;
 };
 
-//for radiocommunication
-struct payload_t {                 // structure of our payload
-  unsigned long ms;
-  unsigned int resource; //0-lamp 1-keyboard
-  char value; //g-get 0-off 1-on
-};
+
 
 //payload resources
 const int LAMP = 0;
@@ -77,7 +79,7 @@ const char GETrf = 'g';
 const char OFF = '0';
 const char ON = '1';
 
-Observer observers[5];
+Observer observers;
 
 Resource resources[3];
 // UDP and CoAP class
@@ -93,7 +95,7 @@ bool isLampOn = false;
 // CoAP server endpoint URL
 void callback_light(CoAPPacket &packet, IPAddress ip, int port)
 {
-    Serial.println("[Light] ON/OFF");
+    Serial.println(F("[Light] ON/OFF"));
 
     if (packet.code == GET)
     {
@@ -129,14 +131,11 @@ void callback_light(CoAPPacket &packet, IPAddress ip, int port)
 
 void callback_wellKnown(CoAPPacket &packet, IPAddress ip, int port)
 {
-    Serial.println("well know");
+    Serial.println(F("well know"));
 
     // link-format
-    String payload = wellKnownEndPoint + " informations about endpoints\n" +
-                     lightEndPoint + " Can light the lamp on(1) or off(0) with PUT method, or check the lamp state with get\n" +
-                     keyboardEndPoint + " Response to GET calls to be or not observed\n" +
-                     statisticsEndPoint + " Set of radio connection statistics ";
-
+    String payload = "link-format";
+    
     Serial.println("Size of response payload" + sizeof(payload));
     // todo: new sendResponse with link-format
     coap.sendResponse(ip, port, packet.messageId, payload.c_str());
@@ -144,7 +143,7 @@ void callback_wellKnown(CoAPPacket &packet, IPAddress ip, int port)
 
 void callback_statistics(CoAPPacket &packet, IPAddress ip, int port)
 {
-    Serial.println("Statistics");
+    Serial.println(F("Statistics"));
 
     // prosi o statystyki
 
@@ -153,7 +152,7 @@ void callback_statistics(CoAPPacket &packet, IPAddress ip, int port)
 
 void callback_keyboard(CoAPPacket &packet, IPAddress ip, int port)
 {
-    Serial.println("Keyboard");
+    Serial.println(F("Keyboard"));
 
     if (packet.code == GET)
     {
@@ -167,14 +166,15 @@ void callback_keyboard(CoAPPacket &packet, IPAddress ip, int port)
             {
                 if (packet.options[i].buffer == 0)
                 {
-                    // dodaj obserwatora
-                    addObserver(ip, port, packet.token);
+                    observers.ip = ip;
+                    observers.port = port;
+                    observers.counter = 0;
+                    observers.token = packet.token;
                     break;
                 }
                 else
                 {
-                    // usun obserwatora
-                    removeObserver(ip, port);
+                    observers.counter = -1;
                     break;
                 }
             }
@@ -182,47 +182,18 @@ void callback_keyboard(CoAPPacket &packet, IPAddress ip, int port)
     }
 }
 
-void addObserver(IPAddress ip, int port, uint8_t token)
-{
-    for (int i = 0; i < sizeof(observers); i++)
-    {
-        // Observer jest incjalizowany z {0,0,0}
-        if (observers[i].port == 0 || observers[i].counter == -1)
-        {
-            observers[i].ip = ip;
-            observers[i].port = port;
-            observers[i].counter = 0;
-            observers[i].token = token;
-        }
-    }
-    observers[0].ip = ip;
-    observers[0].port = port;
-    observers[0].counter = 0;
-    observers[0].token = token;
-}
-
-void removeObserver(IPAddress ip, int port)
-{
-    for (int i = 0; i < sizeof(observers); i++)
-    {
-        if (observers[i].ip == ip)
-        {
-            observers[i].counter = -1;
-        }
-    }
-}
 
 void setup()
 {
     Serial.begin(115200);
-    Serial.println("############# OBIR PROJECT: ARDUINO UNO #############");
+    Serial.println(F("############# OBIR PROJECT: ARDUINO UNO #############"));
     
     SPI.begin();
     radio.begin();
     network.begin(OUR_CHANNEL, THIS_NODE_ID);
     
     Ethernet.begin(mac);
-    Serial.print("My IP address: ");
+    Serial.print(F("My IP address: "));
     for (byte thisByte = 0; thisByte < 4; thisByte++)
     {
         Serial.print(Ethernet.localIP()[thisByte], DEC);
@@ -232,7 +203,7 @@ void setup()
 
     // add server url endpoints.
     // can add multiple endpoint urls.
-    Serial.println("Setup Callbacks");
+    Serial.println(F("Setup Callbacks"));
     coap.server(callback_light, lightEndPoint);
     coap.server(callback_keyboard, keyboardEndPoint);
     coap.server(callback_wellKnown, wellKnownEndPoint);
@@ -251,62 +222,62 @@ void loop()
       RF24NetworkHeader header;        // if so, grab it and handle
       payload_t payload;
       network.read(header,&payload,sizeof(payload));
-      Serial.print("Received packet at ");
+      Serial.print(F("Received packet at "));
       Serial.println(payload.ms);
       handlePayload(payload);
     }
 }
 
 void getLampState(){
-  Serial.println("Sending lamp state request.");
+  Serial.println(F("Sending lamp state request."));
   payload_t payload {millis(), LAMP, GETrf};
   send(payload);
 }
 
 void setLampState(char state){  // ON or OFF
-  Serial.print("Sending lamp state change to ");
+  Serial.print(F("Sending lamp state change to "));
   if(state == ON){
-    Serial.println("on.");
+    Serial.println(F("on."));
   }else{
-    Serial.println("off.");
+    Serial.println(F("off."));
   }
   payload_t payload {millis(), LAMP, state};
   send(payload);
 }
 
 void getKeyboardState(){
-  Serial.println("Sending keyboard state request.");
+  Serial.println(F("Sending keyboard state request."));
   payload_t payload {millis(), KEYBOARD, GETrf};
   send(payload);
 }
 
 void handlePayload(payload_t payload){
-Serial.print("MESSAGE: ");
+Serial.print(F("MESSAGE: "));
   switch (payload.resource) {
        case LAMP:
-         Serial.print("Lamp is ");
+         Serial.print(F("Lamp is "));
          switch (payload.value) {
            case ON:
              isLampOn = true;
-             Serial.println("on.");
+             Serial.println(F("on."));
              break;
            case OFF:
              isLampOn = false;
-             Serial.println("off.");
+             Serial.println(F("off."));
              break;
            default:
-             Serial.println("(Unknown lamp state!).");
+             Serial.println(F("(Unknown lamp state!)."));
              break;
          }
          break;
        case KEYBOARD:
           lastKeyPressed = payload.value;
-          Serial.print("Keyboard's last key pressed is \"");
+          Serial.print(F("Keyboard's last key pressed is \""));
           Serial.print(payload.value);
-          Serial.println("\"");
+          Serial.println(F("\""));
           break;
        default:
-         Serial.println("Unknown message");
+         Serial.println(F("Unknown message"));
          break;
   }
 }
@@ -316,11 +287,11 @@ bool send(payload_t payload){
     RF24NetworkHeader header(OTHER_NODE_ID);
     bool ok = network.write(header,&payload,sizeof(payload));
     if (ok){
-     Serial.println("ok.");
+     Serial.println(F("ok."));
      return true;
     }
     else{
-     Serial.println("failed.");
+     Serial.println(F("failed."));
      return false;
     }
 }
