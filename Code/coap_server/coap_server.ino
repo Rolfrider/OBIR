@@ -14,7 +14,8 @@
 const int OUR_CHANNEL = 65;
 const uint16_t THIS_NODE_ID = 00;  // address of our node in Octal format ( 04,031, etc)
 const uint16_t OTHER_NODE_ID = 01; // address of the other node in Octal format
-
+//const String wellKnownResp = "</light>;rt=\"state of lamp\";ct=0,</keyboard>;rt=\"returns input from keyboard if occurres\";ct=0;obs,</statistics>;rt=\"values of 3 radio network statistics\";ct=0";
+const String wellKnownResp = "</light>,</keyboard>,</statistics>";
 byte mac[] = {0x00, 0xAA, 0xBB, 0xCC, 0xDE, 0x02};
 
 String lightEndPoint = "light";
@@ -91,18 +92,16 @@ RF24Network network(radio); // network uses that radio
 
 uint8_t numberOfReceivedMessages = 0;
 uint8_t numberOfSentMessages = 0;
-size_t sizeOfReceivedMessages = 0;
-size_t sizeOfSentMessages = 0;
+uint8_t sizeOfReceivedMessages = 0;
+uint8_t sizeOfSentMessages = 0;
 
 char lastKeyPressed = '0';
 bool isLampOn = false;
 bool firstLoop = true;
 
-void updateStatisticsResource(){
-    resources[1].value = String("Numer of sent messages: " + numberOfSentMessages 
-                                + "\nNumer of received messages: " + numberOfReceivedMessages
-                                + "\nNumber of sent bytes: " + sizeOfSentMessages
-                                + "\nNumber of rececived bytes: " + sizeOfReceivedMessages);
+void updateStatisticsResource()
+{
+    resources[1].value = "Received = " + (String)numberOfReceivedMessages + " Sent = " + (String)numberOfSentMessages + " sizeOfReceived = " + (String)sizeOfReceivedMessages + " sizeOfSentMessages = " + (String)sizeOfSentMessages;
 }
 
 // CoAP server endpoint URL
@@ -169,20 +168,46 @@ void callback_wellKnown(CoAPPacket &packet, IPAddress ip, int port)
     Serial.println(F("well know"));
 
     // link-format
-    char payload[] = "</light>;rt=\"state of lamp\";ct=0,</keyboard>;rt=\"returns input from keyboard if occures\";ct=0;obs,</statistics>;rt=\"values of 3 radio network statistics\";ct=0";
 
-    Serial.println("Size of response payload" + sizeof(payload));
     // todo: new sendResponse with link-format
-    coap.sendResponse(ip, port, packet.messageId, payload, strlen(payload), CONTENT, APPLICATION_LINK_FORMAT, NULL, 0);
+    coap.sendResponse(ip, port, packet.messageId, wellKnownResp.c_str(), strlen(wellKnownResp.c_str()), CONTENT, APPLICATION_LINK_FORMAT, packet.token, packet.tokenLen);
 }
 
 void callback_statistics(CoAPPacket &packet, IPAddress ip, int port)
 {
     Serial.println(F("Statistics"));
 
-    // prosi o statystyki
+    // prosi o statystykiif (packet.code == GET)
+    if (packet.code = GET)
+    {
+        Serial.println(F("IS GET"));
+        for (int i = 0; i < sizeof(packet.options); i++)
+        {
+            if (packet.options[i].number == 0)
+            {
+                Serial.println(F("NOT THIS OPTION"));
+                continue;
+            }
+            if (packet.options[i].number == 4)
+            {
+                Serial.println(F("OPTION ETAG"));
 
-    coap.sendResponse(ip, port, packet.messageId, "statistics placeholder");
+                if (*packet.options[i].buffer == resources[0].tag)
+                {
+                    coap.sendResponse(ip, port, packet.messageId, "", 0, VALID, NONE, packet.token, packet.tokenLen);
+                    return;
+                }
+                else
+                {
+                    coap.sendETagResponse(ip, port, packet.messageId, resources[1].value.c_str(), resources[1].tag);
+                    //coap.sendResponse(ip, port, packet.messageId, resources[0].value.c_str());
+                    return;
+                }
+            }
+        }
+        coap.sendETagResponse(ip, port, packet.messageId, resources[1].value.c_str(), resources[1].tag);
+        //coap.sendResponse(ip, port, packet.messageId, resources[0].value.c_str());
+    }
 }
 
 void callback_keyboard(CoAPPacket &packet, IPAddress ip, int port)
