@@ -201,6 +201,7 @@ class CoAP
     void response(callback c) { resp = c; }
 
     void server(callback c, String url) { uri.add(c, url); }
+    uint16_t sendETagResponse(IPAddress ip, int port, uint16_t messageId, char *payload, uint8_t tag);
     uint16_t sendResponse(IPAddress ip, int port, uint16_t messageId);
     uint16_t sendResponse(IPAddress ip, int port, uint16_t messageId, char *payload);
     uint16_t sendResponse(IPAddress ip, int port, uint16_t messageId, char *payload, int payloadLen);
