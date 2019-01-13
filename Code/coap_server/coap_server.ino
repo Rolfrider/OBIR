@@ -14,7 +14,8 @@
 const int OUR_CHANNEL = 65;
 const uint16_t THIS_NODE_ID = 00;  // address of our node in Octal format ( 04,031, etc)
 const uint16_t OTHER_NODE_ID = 01; // address of the other node in Octal format
-
+//const String wellKnownResp = "</light>;rt=\"state of lamp\";ct=0,</keyboard>;rt=\"returns input from keyboard if occurres\";ct=0;obs,</statistics>;rt=\"values of 3 radio network statistics\";ct=0";
+const String wellKnownResp = "</light>,</keyboard>,</statistics>";
 byte mac[] = {0x00, 0xAA, 0xBB, 0xCC, 0xDE, 0x02};
 
 String lightEndPoint = "light";
@@ -56,8 +57,9 @@ struct Observer
 {
     IPAddress ip;
     int port;
-    uint8_t token;
-    int counter;
+    uint8_t *token;
+    uint8_t tokenLen;
+    uint8_t counter;
 };
 
 //for ETAG
@@ -91,18 +93,14 @@ RF24Network network(radio); // network uses that radio
 
 uint8_t numberOfReceivedMessages = 0;
 uint8_t numberOfSentMessages = 0;
-size_t sizeOfReceivedMessages = 0;
-size_t sizeOfSentMessages = 0;
 
 char lastKeyPressed = '0';
 bool isLampOn = false;
 bool firstLoop = true;
 
-void updateStatisticsResource(){
-    resources[1].value = String("Numer of sent messages: " + numberOfSentMessages 
-                                + "\nNumer of received messages: " + numberOfReceivedMessages
-                                + "\nNumber of sent bytes: " + sizeOfSentMessages
-                                + "\nNumber of rececived bytes: " + sizeOfReceivedMessages);
+void updateStatisticsResource()
+{
+    resources[1].value = "Received = " + (String)numberOfReceivedMessages + " Sent = " + (String)numberOfSentMessages + " chanel = " + (String)(OUR_CHANNEL);
 }
 
 // CoAP server endpoint URL
@@ -126,18 +124,19 @@ void callback_light(CoAPPacket &packet, IPAddress ip, int port)
 
                 if (*packet.options[i].buffer == resources[0].tag)
                 {
-                    coap.sendResponse(ip, port, packet.messageId, "", 0, VALID, NONE, packet.token, packet.tokenLen);
+                    coap.sendValidResponse(ip, port, packet.messageId, packet.token, packet.tokenLen);
                     return;
                 }
                 else
                 {
-                    coap.sendResponse(ip, port, packet.messageId, resources[0].value.c_str());
+                    coap.sendETagResponse(ip, port, packet.messageId, resources[0].value.c_str(), resources[0].tag, packet.token, packet.tokenLen);
+                    //coap.sendResponse(ip, port, packet.messageId, resources[0].value.c_str());
                     return;
                 }
             }
         }
-
-        coap.sendResponse(ip, port, packet.messageId, resources[0].value.c_str());
+        coap.sendETagResponse(ip, port, packet.messageId, resources[0].value.c_str(), resources[0].tag, packet.token, packet.tokenLen);
+        //coap.sendResponse(ip, port, packet.messageId, resources[0].value.c_str());
     }
     if (packet.code == PUT)
     {
@@ -167,21 +166,44 @@ void callback_wellKnown(CoAPPacket &packet, IPAddress ip, int port)
 {
     Serial.println(F("well know"));
 
-    // link-format
-    char payload[] = "</light>;rt=\"state of lamp\";ct=0,</keyboard>;rt=\"returns input from keyboard if occures\";ct=0;obs,</statistics>;rt=\"values of 3 radio network statistics\";ct=0";
-
-    Serial.println("Size of response payload" + sizeof(payload));
-    // todo: new sendResponse with link-format
-    coap.sendResponse(ip, port, packet.messageId, payload, strlen(payload), CONTENT, APPLICATION_LINK_FORMAT, NULL, 0);
+    coap.sendResponse(ip, port, packet.messageId, wellKnownResp.c_str(), strlen(wellKnownResp.c_str()), CONTENT, APPLICATION_LINK_FORMAT, packet.token, packet.tokenLen);
 }
 
 void callback_statistics(CoAPPacket &packet, IPAddress ip, int port)
 {
     Serial.println(F("Statistics"));
 
-    // prosi o statystyki
+    // prosi o statystykiif (packet.code == GET)
+    if (packet.code = GET)
+    {
+        Serial.println(F("IS GET"));
+        for (int i = 0; i < sizeof(packet.options); i++)
+        {
+            if (packet.options[i].number == 0)
+            {
+                Serial.println(F("NOT THIS OPTION"));
+                continue;
+            }
+            if (packet.options[i].number == 4)
+            {
+                Serial.println(F("OPTION ETAG"));
 
-    coap.sendResponse(ip, port, packet.messageId, "statistics placeholder");
+                if (*packet.options[i].buffer == resources[0].tag)
+                {
+                    coap.sendValidResponse(ip, port, packet.messageId, packet.token, packet.tokenLen);
+                    return;
+                }
+                else
+                {
+                    coap.sendETagResponse(ip, port, packet.messageId, resources[1].value.c_str(), resources[1].tag, packet.token, packet.tokenLen);
+                    //coap.sendResponse(ip, port, packet.messageId, resources[0].value.c_str());
+                    return;
+                }
+            }
+        }
+        coap.sendETagResponse(ip, port, packet.messageId, resources[1].value.c_str(), resources[1].tag, packet.token, packet.tokenLen);
+        //coap.sendResponse(ip, port, packet.messageId, resources[0].value.c_str());
+    }
 }
 
 void callback_keyboard(CoAPPacket &packet, IPAddress ip, int port)
@@ -200,16 +222,24 @@ void callback_keyboard(CoAPPacket &packet, IPAddress ip, int port)
             if (packet.options[i].number == 6)
             {
                 Serial.println(F("OBSERVE"));
-                if (*packet.options[i].buffer == 0)
+                Serial.println(*packet.options[i].buffer);
+                if (*(packet.options[i].buffer) == 88)
                 {
+                    Serial.println(F("ADD OBSERVER"));
                     observers.ip = ip;
                     observers.port = port;
-                    observers.counter = 0;
+                    observers.counter = 2;
                     observers.token = packet.token;
+                    observers.tokenLen = packet.tokenLen;
+                    observers.counter++;
+                    Serial.println(*packet.token);
+                    Serial.println(*observers.token);
+                    coap.notifyObserver(observers.ip, observers.port, observers.counter, resources[2].value.c_str(), strlen(resources[2].value.c_str()), observers.token, observers.tokenLen);
                     break;
                 }
                 else
                 {
+                    Serial.println(F("REMOVE OBSERVER"));
                     observers.counter = -1;
                     break;
                 }
@@ -272,7 +302,8 @@ void loop()
         Serial.println(resources[2].value);
     }
 
-    if(firstLoop){
+    if (firstLoop)
+    {
         getAllResOnStart();
         firstLoop = false;
     }
@@ -318,7 +349,6 @@ void getKeyboardState()
 
 void handlePayload(payload_t payload)
 {
-    sizeOfReceivedMessages += sizeof(payload);
     numberOfReceivedMessages++;
     updateStatisticsResource();
     Serial.print(F("MESSAGE: "));
@@ -349,11 +379,17 @@ void handlePayload(payload_t payload)
         Serial.print(F("Keyboard's last key pressed is \""));
         Serial.print(payload.value);
         Serial.println(F("\""));
-        // powiadom obserwatora
-        coap.sendResponse(observers.ip, observers.port, 1, lastKeyPressed, strlen(lastKeyPressed),
-                          CONTENT, TEXT_PLAIN, observers.token, sizeof(observers.token));
+
         resources[2].tag++;
         resources[2].value = lastKeyPressed;
+        // powiadom obserwatora
+        if (observers.counter != -1)
+        {
+            observers.counter++;
+            coap.notifyObserver(observers.ip, observers.port, observers.counter, resources[2].value.c_str(), strlen(resources[2].value.c_str()), observers.token, observers.tokenLen);
+            // coap.sendResponse(observers.ip, observers.port, 1, lastKeyPressed, strlen(lastKeyPressed),
+            //                   CONTENT, TEXT_PLAIN, observers.token, sizeof(observers.token));
+                }
         break;
     default:
         Serial.println(F("Unknown message"));
@@ -363,7 +399,6 @@ void handlePayload(payload_t payload)
 
 bool send(payload_t payload)
 {
-    sizeOfSentMessages += sizeof(payload);
     numberOfSentMessages++;
     updateStatisticsResource();
     Serial.print(F("Sending..."));

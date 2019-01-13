@@ -346,34 +346,52 @@ bool CoAP::loop()
     return true;
 }
 
- uint16_t CoAP::sendETagResponse(IPAddress ip, int port, uint16_t messageId, char *payload, uint8_t tag){
-     CoAPPacket packet;
+uint16_t CoAP::sendValidResponse(IPAddress ip, int port, uint16_t messageId, uint8_t *token, int tokenLen)
+{
+    CoAPPacket packet;
+
+    packet.type = ACK;
+    packet.code = VALID;
+    packet.token = token;
+    packet.tokenLen = tokenLen;
+    packet.payload = NULL;
+    packet.payloadLen = 0;
+    packet.optionNum = 0;
+    packet.messageId = messageId;
+
+    return this->sendPacket(packet, ip, port);
+}
+
+uint16_t CoAP::sendETagResponse(IPAddress ip, int port, uint16_t messageId, char *payload, uint8_t tag, uint8_t *token, int tokenLen)
+{
+    CoAPPacket packet;
 
     packet.type = ACK;
     packet.code = CONTENT;
-    packet.token = NULL;
-    packet.tokenLen = 0;
+    packet.token = token;
+    packet.tokenLen = tokenLen;
     packet.payload = (uint8_t *)payload;
     packet.payloadLen = strlen(payload);
     packet.optionNum = 0;
     packet.messageId = messageId;
 
     // if more options?
+
+    packet.options[packet.optionNum].buffer = &tag;
+    packet.options[packet.optionNum].length = 2;
+    packet.options[packet.optionNum].number = E_TAG;
+    packet.optionNum++;
     char optionBuffer[2];
-    optionBuffer[0] = ((uint16_t)type & 0xFF00) >> 8;
-    optionBuffer[1] = ((uint16_t)type & 0x00FF);
+    optionBuffer[0] = ((uint16_t)TEXT_PLAIN & 0xFF00) >> 8;
+    optionBuffer[1] = ((uint16_t)TEXT_PLAIN & 0x00FF);
     packet.options[packet.optionNum].buffer = (uint8_t *)optionBuffer;
     packet.options[packet.optionNum].length = 2;
     packet.options[packet.optionNum].number = CONTENT_FORMAT;
     packet.optionNum++;
     // Etag
-    packet.option[packet.optionNum].buffer = *tag;
-    packet.option[packet.optionNum].lenght = 2;
-    packet.option[packet.optionNum].number = E_TAG;
-    packet.optionNum++;
 
     return this->sendPacket(packet, ip, port);
- }
+}
 
 uint16_t CoAP::sendResponse(IPAddress ip, int port, uint16_t messageId)
 {
@@ -388,6 +406,36 @@ uint16_t CoAP::sendResponse(IPAddress ip, int port, uint16_t messageId, char *pa
 uint16_t CoAP::sendResponse(IPAddress ip, int port, uint16_t messageId, char *payload, int payloadLen)
 {
     this->sendResponse(ip, port, messageId, payload, payloadLen, CONTENT, TEXT_PLAIN, NULL, 0);
+}
+
+uint16_t CoAP::notifyObserver(IPAddress ip, int port, uint8_t obs, char *payload, int payloadLen, uint8_t *token, uint8_t tokenLen)
+{
+    // make packet
+    CoAPPacket packet;
+
+    packet.type = NON;
+    packet.code = CONTENT;
+    packet.token = token;
+    packet.tokenLen = tokenLen;
+    packet.payload = (uint8_t *)payload;
+    packet.payloadLen = payloadLen;
+    packet.optionNum = 0;
+    packet.messageId = NULL;
+
+    // if more options?
+    packet.options[packet.optionNum].buffer = &obs;
+    packet.options[packet.optionNum].length = 1;
+    packet.options[packet.optionNum].number = OBSERVE;
+    packet.optionNum++;
+    char optionBuffer[2];
+    optionBuffer[0] = ((uint16_t)TEXT_PLAIN & 0xFF00) >> 8;
+    optionBuffer[1] = ((uint16_t)TEXT_PLAIN & 0x00FF);
+    packet.options[packet.optionNum].buffer = (uint8_t *)optionBuffer;
+    packet.options[packet.optionNum].length = 2;
+    packet.options[packet.optionNum].number = CONTENT_FORMAT;
+    packet.optionNum++;
+
+    return this->sendPacket(packet, ip, port);
 }
 
 uint16_t CoAP::sendResponse(IPAddress ip, int port, uint16_t messageId, char *payload, int payloadLen,
