@@ -10,10 +10,11 @@ const uint16_t THIS_NODE_ID = 00;    // address of our node in Octal format ( 04
 const uint16_t OTHER_NODE_ID = 01;   // address of the other node in Octal format
 
 //payload resources
-const int LAMP = 0;
-const int KEYBOARD = 1;
+const int ALL = 0;
+const int LAMP = 1;
+const int KEYBOARD = 2;
 //payload values
-const char GET = 'g';
+const char GETrf = 'g';
 const char OFF = '0';
 const char ON = '1';
 
