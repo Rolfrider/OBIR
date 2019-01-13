@@ -14,8 +14,9 @@ const unsigned long interval = 10000; //ms  // How often to send
 unsigned long last_sent;             // when did we last send?
 
 //payload resources
-const int LAMP = 0;
-const int KEYBOARD = 1;
+const int ALL = 0;
+const int LAMP = 1;
+const int KEYBOARD = 2;
 //payload values
 const char GET = 'g';
 const char OFF = '0';
@@ -41,6 +42,7 @@ Keypad keypad=Keypad(makeKeymap(keys), rowPins, colPins, 4, 3);
 char lastKeyPressed = '0';
 char lastKeySent = '0';
 bool isLampOn = false;
+bool firstLoop = true;
 
 void setup() {
   Serial.begin(115200);
@@ -80,6 +82,12 @@ void loop() {
         }
       }
    }
+
+   if(firstLoop){
+     sendLampState();
+     sendKeyboardState();
+     firstLoop = false;
+   }
 }
 
 bool handlePayload(payload_t payload){
@@ -108,6 +116,11 @@ bool handlePayload(payload_t payload){
        case KEYBOARD:
           Serial.println("Keyboard get.");
           sendKeyboardState();
+          break;
+        case ALL:
+          Serial.println("All get.");
+          sendKeyboardState();
+          sendLampState();
           break;
        default:
          Serial.println("Unknown resource request!");

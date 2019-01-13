@@ -96,6 +96,7 @@ size_t sizeOfSentMessages = 0;
 
 char lastKeyPressed = '0';
 bool isLampOn = false;
+bool firstLoop = true;
 
 // CoAP server endpoint URL
 void callback_light(CoAPPacket &packet, IPAddress ip, int port)
@@ -233,7 +234,6 @@ void setup()
 
     // start coap server/client
     coap.start();
-    getAllResOnStart();
 }
 
 void loop()
@@ -249,6 +249,11 @@ void loop()
         Serial.print(F("Received packet at "));
         Serial.println(payload.ms);
         handlePayload(payload);
+    }
+
+    if(firstLoop){
+        getAllResOnStart();
+        firstLoop = false;
     }
 }
 
