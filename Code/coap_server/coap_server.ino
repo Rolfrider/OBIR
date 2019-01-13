@@ -112,15 +112,19 @@ void callback_light(CoAPPacket &packet, IPAddress ip, int port)
 
     if (packet.code == GET)
     {
+        Serial.println(F("IS GET"));
         for (int i = 0; i < sizeof(packet.options); i++)
         {
             if (packet.options[i].number == 0)
             {
+                Serial.println(F("NOT THIS OPTION"));
                 continue;
             }
             if (packet.options[i].number == 4)
             {
-                if (packet.options[i].buffer == resources[0].tag)
+                Serial.println(F("OPTION ETAG"));
+
+                if (*packet.options[i].buffer == resources[0].tag)
                 {
                     coap.sendResponse(ip, port, packet.messageId, "", 0, VALID, NONE, packet.token, packet.tokenLen);
                     return;
@@ -137,6 +141,7 @@ void callback_light(CoAPPacket &packet, IPAddress ip, int port)
     }
     if (packet.code == PUT)
     {
+        Serial.println(F("PUT"));
         // DLA put lub post
         // send response
         char p[packet.payloadLen + 1];
@@ -149,13 +154,11 @@ void callback_light(CoAPPacket &packet, IPAddress ip, int port)
         {
             //  kazac lampce zaktualizowac (wylaczy)
             setLampState(OFF);
-            coap.sendResponse(ip, port, packet.messageId, "0");
         }
         else if (message.equals("1"))
         {
             // kazac lampce zaktualizowac(wlaczyc)
             setLampState(ON);
-            coap.sendResponse(ip, port, packet.messageId, "1");
         }
     }
 }
@@ -178,7 +181,7 @@ void callback_statistics(CoAPPacket &packet, IPAddress ip, int port)
 
     // prosi o statystyki
 
-    coap.sendResponse(ip, port, packet.messageId, " statistics placeholder");
+    coap.sendResponse(ip, port, packet.messageId, "statistics placeholder");
 }
 
 void callback_keyboard(CoAPPacket &packet, IPAddress ip, int port)
@@ -187,6 +190,7 @@ void callback_keyboard(CoAPPacket &packet, IPAddress ip, int port)
 
     if (packet.code == GET)
     {
+        Serial.println(F("GET"));
         for (int i = 0; i < sizeof(packet.options); i++)
         {
             if (packet.options[i].number == 0)
@@ -195,7 +199,8 @@ void callback_keyboard(CoAPPacket &packet, IPAddress ip, int port)
             }
             if (packet.options[i].number == 6)
             {
-                if (packet.options[i].buffer == 0)
+                Serial.println(F("OBSERVE"));
+                if (*packet.options[i].buffer == 0)
                 {
                     observers.ip = ip;
                     observers.port = port;
@@ -239,6 +244,8 @@ void setup()
     coap.server(callback_wellKnown, wellKnownEndPoint);
     coap.server(callback_statistics, statisticsEndPoint);
 
+    resources[0].value = "0";
+
     // start coap server/client
     coap.start();
 }
@@ -256,6 +263,13 @@ void loop()
         Serial.print(F("Received packet at "));
         Serial.println(payload.ms);
         handlePayload(payload);
+
+        Serial.print("Light - ");
+        Serial.println(resources[0].value);
+        Serial.print("Stats - ");
+        Serial.println(resources[1].value);
+        Serial.print("Keyboard - ");
+        Serial.println(resources[2].value);
     }
 
     if(firstLoop){
@@ -264,16 +278,18 @@ void loop()
     }
 }
 
-void getAllResOnStart(){
+void getAllResOnStart()
+{
     Serial.println(F("Sending initial request."));
-    payload_t payload {millis(), ALL, GETrf};
+    payload_t payload{millis(), ALL, GETrf};
     send(payload);
-} 
+}
 
-void getLampState(){
-  Serial.println(F("Sending lamp state request."));
-  payload_t payload {millis(), LAMP, GETrf};
-  send(payload);
+void getLampState()
+{
+    Serial.println(F("Sending lamp state request."));
+    payload_t payload{millis(), LAMP, GETrf};
+    send(payload);
 }
 
 void setLampState(char state)
@@ -282,10 +298,12 @@ void setLampState(char state)
     if (state == ON)
     {
         Serial.println(F("on."));
+        resources[0].value = "on";
     }
     else
     {
         Serial.println(F("off."));
+        resources[0].value = "off";
     }
     payload_t payload{millis(), LAMP, state};
     send(payload);
