@@ -124,13 +124,14 @@ void callback_light(CoAPPacket &packet, IPAddress ip, int port)
                 }
                 else
                 {
-                    coap.sendResponse(ip, port, packet.messageId, resources[0].value.c_str());
+                    coap.sendETagResponse(ip, port, packet.messageId, resources[0].value.c_str(), resources[0].tag);
+                    //coap.sendResponse(ip, port, packet.messageId, resources[0].value.c_str());
                     return;
                 }
             }
         }
-
-        coap.sendResponse(ip, port, packet.messageId, resources[0].value.c_str());
+        coap.sendETagResponse(ip, port, packet.messageId, resources[0].value.c_str(), resources[0].tag);
+        //coap.sendResponse(ip, port, packet.messageId, resources[0].value.c_str());
     }
     if (packet.code == PUT)
     {
@@ -265,7 +266,8 @@ void loop()
         Serial.println(resources[2].value);
     }
 
-    if(firstLoop){
+    if (firstLoop)
+    {
         getAllResOnStart();
         firstLoop = false;
     }

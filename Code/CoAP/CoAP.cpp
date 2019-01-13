@@ -346,8 +346,9 @@ bool CoAP::loop()
     return true;
 }
 
- uint16_t CoAP::sendETagResponse(IPAddress ip, int port, uint16_t messageId, char *payload, uint8_t tag){
-     CoAPPacket packet;
+uint16_t CoAP::sendETagResponse(IPAddress ip, int port, uint16_t messageId, char *payload, uint8_t tag)
+{
+    CoAPPacket packet;
 
     packet.type = ACK;
     packet.code = CONTENT;
@@ -359,21 +360,22 @@ bool CoAP::loop()
     packet.messageId = messageId;
 
     // if more options?
+
+    packet.options[packet.optionNum].buffer = &tag;
+    packet.options[packet.optionNum].length = 2;
+    packet.options[packet.optionNum].number = E_TAG;
+    packet.optionNum++;
     char optionBuffer[2];
-    optionBuffer[0] = ((uint16_t)type & 0xFF00) >> 8;
-    optionBuffer[1] = ((uint16_t)type & 0x00FF);
+    optionBuffer[0] = ((uint16_t)TEXT_PLAIN & 0xFF00) >> 8;
+    optionBuffer[1] = ((uint16_t)TEXT_PLAIN & 0x00FF);
     packet.options[packet.optionNum].buffer = (uint8_t *)optionBuffer;
     packet.options[packet.optionNum].length = 2;
     packet.options[packet.optionNum].number = CONTENT_FORMAT;
     packet.optionNum++;
     // Etag
-    packet.option[packet.optionNum].buffer = *tag;
-    packet.option[packet.optionNum].lenght = 2;
-    packet.option[packet.optionNum].number = E_TAG;
-    packet.optionNum++;
 
     return this->sendPacket(packet, ip, port);
- }
+}
 
 uint16_t CoAP::sendResponse(IPAddress ip, int port, uint16_t messageId)
 {
