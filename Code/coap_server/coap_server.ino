@@ -98,6 +98,13 @@ char lastKeyPressed = '0';
 bool isLampOn = false;
 bool firstLoop = true;
 
+void updateStatisticsResource(){
+    resources[1].value = String("Numer of sent messages: " + numberOfSentMessages 
+                                + "\nNumer of received messages: " + numberOfReceivedMessages
+                                + "\nNumber of sent bytes: " + sizeOfSentMessages
+                                + "\nNumber of rececived bytes: " + sizeOfReceivedMessages);
+}
+
 // CoAP server endpoint URL
 void callback_light(CoAPPacket &packet, IPAddress ip, int port)
 {
@@ -315,6 +322,7 @@ void handlePayload(payload_t payload)
 {
     sizeOfReceivedMessages += sizeof(payload);
     numberOfReceivedMessages++;
+    updateStatisticsResource();
     Serial.print(F("MESSAGE: "));
     switch (payload.resource)
     {
@@ -359,6 +367,7 @@ bool send(payload_t payload)
 {
     sizeOfSentMessages += sizeof(payload);
     numberOfSentMessages++;
+    updateStatisticsResource();
     Serial.print(F("Sending..."));
     RF24NetworkHeader header(OTHER_NODE_ID);
     bool ok = network.write(header, &payload, sizeof(payload));
