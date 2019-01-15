@@ -57,7 +57,7 @@ struct Observer
 {
     IPAddress ip;
     int port;
-    uint8_t *token;
+    uint8_t token[2];
     uint8_t tokenLen;
     uint8_t counter;
 };
@@ -223,15 +223,14 @@ void callback_keyboard(CoAPPacket &packet, IPAddress ip, int port)
             if (packet.options[i].number == 6)
             {
                 Serial.println(F("OBSERVE"));
-                Serial.println(*packet.options[i].buffer);
                 if (*(packet.options[i].buffer) == 88)
                 {
                     Serial.println(F("ADD OBSERVER"));
                     observers.ip = ip;
                     observers.port = port;
                     observers.counter = 2;
-                    //memcpy(observers.token, packet.token, packet.tokenLen);
-                    observers.token = packet.token;
+                    memcpy(observers.token, packet.token, packet.tokenLen);
+                    //observers.token = packet.token;
                     observers.tokenLen = packet.tokenLen;
                     observers.counter++;
                     coap.notifyObserver(observers.ip, observers.port, observers.counter, resources[2].value.c_str(), strlen(resources[2].value.c_str()), observers.token, observers.tokenLen);
