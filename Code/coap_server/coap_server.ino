@@ -101,6 +101,7 @@ bool firstLoop = true;
 void updateStatisticsResource()
 {
     resources[1].value = "Received = " + (String)numberOfReceivedMessages + " Sent = " + (String)numberOfSentMessages + " chanel = " + (String)(OUR_CHANNEL);
+    resources[1].tag++;
 }
 
 // CoAP server endpoint URL
@@ -141,7 +142,7 @@ void callback_light(CoAPPacket &packet, IPAddress ip, int port)
     if (packet.code == PUT)
     {
         Serial.println(F("PUT"));
-        // DLA put lub post
+        // DLA put
         // send response
         char p[packet.payloadLen + 1];
         memcpy(p, packet.payload, packet.payloadLen);
@@ -188,7 +189,7 @@ void callback_statistics(CoAPPacket &packet, IPAddress ip, int port)
             {
                 Serial.println(F("OPTION ETAG"));
 
-                if (*packet.options[i].buffer == resources[0].tag)
+                if (*packet.options[i].buffer == resources[1].tag)
                 {
                     coap.sendValidResponse(ip, port, packet.messageId, packet.token, packet.tokenLen);
                     return;
@@ -229,11 +230,10 @@ void callback_keyboard(CoAPPacket &packet, IPAddress ip, int port)
                     observers.ip = ip;
                     observers.port = port;
                     observers.counter = 2;
+                    //memcpy(observers.token, packet.token, packet.tokenLen);
                     observers.token = packet.token;
                     observers.tokenLen = packet.tokenLen;
                     observers.counter++;
-                    Serial.println(*packet.token);
-                    Serial.println(*observers.token);
                     coap.notifyObserver(observers.ip, observers.port, observers.counter, resources[2].value.c_str(), strlen(resources[2].value.c_str()), observers.token, observers.tokenLen);
                     break;
                 }
@@ -274,7 +274,7 @@ void setup()
     coap.server(callback_wellKnown, wellKnownEndPoint);
     coap.server(callback_statistics, statisticsEndPoint);
 
-    resources[0].value = "0";
+    resources[0].value = "off.";
 
     // start coap server/client
     coap.start();
@@ -336,6 +336,7 @@ void setLampState(char state)
         Serial.println(F("off."));
         resources[0].value = "off";
     }
+    resources[0].tag++;
     payload_t payload{millis(), LAMP, state};
     send(payload);
 }
@@ -389,7 +390,7 @@ void handlePayload(payload_t payload)
             coap.notifyObserver(observers.ip, observers.port, observers.counter, resources[2].value.c_str(), strlen(resources[2].value.c_str()), observers.token, observers.tokenLen);
             // coap.sendResponse(observers.ip, observers.port, 1, lastKeyPressed, strlen(lastKeyPressed),
             //                   CONTENT, TEXT_PLAIN, observers.token, sizeof(observers.token));
-                }
+        }
         break;
     default:
         Serial.println(F("Unknown message"));
