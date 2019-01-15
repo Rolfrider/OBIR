@@ -13,7 +13,7 @@ Kod pod wpływem duzej inspiracji z reposytorium: https://github.com/hirotakaste
 #define TOKEN_MAX_SIZE 0x0F
 #define PAYLOAD_MARKER 0xFF
 #define MAX_OPTION_NUM 10
-#define BUF_MAX_SIZE 50
+#define BUF_MAX_SIZE 70
 #define DEFAULT_PORT 5683
 
 /* Operatory bitowe

@@ -14,8 +14,8 @@
 const int OUR_CHANNEL = 65;
 const uint16_t THIS_NODE_ID = 00;  // address of our node in Octal format ( 04,031, etc)
 const uint16_t OTHER_NODE_ID = 01; // address of the other node in Octal format
-//const String wellKnownResp = "</light>;rt=\"state of lamp\";ct=0,</keyboard>;rt=\"returns input from keyboard if occurres\";ct=0;obs,</statistics>;rt=\"values of 3 radio network statistics\";ct=0";
-const String wellKnownResp = "</light>,</keyboard>,</statistics>";
+const String wellKnownResp = "</light>;ct=0,</keyboard>;ct=0;rt=\"obs\",</statistics>;ct=0";
+
 byte mac[] = {0x00, 0xAA, 0xBB, 0xCC, 0xDE, 0x02};
 
 String lightEndPoint = "light";
@@ -250,7 +250,7 @@ void callback_keyboard(CoAPPacket &packet, IPAddress ip, int port)
 void setup()
 {
     Serial.begin(115200);
-    Serial.println(F("############# OBIR PROJECT: ARDUINO UNO #############"));
+    Serial.println(F("# OBIR PROJECT: ARDUINO UNO #"));
 
     SPI.begin();
     radio.begin();
