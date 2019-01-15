@@ -100,28 +100,26 @@ bool firstLoop = true;
 
 void updateStatisticsResource()
 {
-    resources[1].value = "Received = " + (String)numberOfReceivedMessages + " Sent = " + (String)numberOfSentMessages + " chanel = " + (String)(OUR_CHANNEL);
     resources[1].tag++;
 }
 
 // CoAP server endpoint URL
 void callback_light(CoAPPacket &packet, IPAddress ip, int port)
 {
-    Serial.println(F("[Light] ON/OFF"));
+    Serial.println(F("Light"));
 
     if (packet.code == GET)
     {
-        Serial.println(F("IS GET"));
+        Serial.println(F("GET"));
         for (int i = 0; i < sizeof(packet.options); i++)
         {
             if (packet.options[i].number == 0)
             {
-                Serial.println(F("NOT THIS OPTION"));
                 continue;
             }
             if (packet.options[i].number == 4)
             {
-                Serial.println(F("OPTION ETAG"));
+                Serial.println(F("ETAG"));
 
                 if (*packet.options[i].buffer == resources[0].tag)
                 {
@@ -177,17 +175,17 @@ void callback_statistics(CoAPPacket &packet, IPAddress ip, int port)
     // prosi o statystykiif (packet.code == GET)
     if (packet.code = GET)
     {
-        Serial.println(F("IS GET"));
+        resources[1].value = "Received=" + (String)numberOfReceivedMessages + " Sent=" + (String)numberOfSentMessages + " channel=" + (String)(OUR_CHANNEL);
+        Serial.println(F("GET"));
         for (int i = 0; i < sizeof(packet.options); i++)
         {
             if (packet.options[i].number == 0)
             {
-                Serial.println(F("NOT THIS OPTION"));
                 continue;
             }
             if (packet.options[i].number == 4)
             {
-                Serial.println(F("OPTION ETAG"));
+                Serial.println(F("ETAG"));
 
                 if (*packet.options[i].buffer == resources[1].tag)
                 {
@@ -220,12 +218,28 @@ void callback_keyboard(CoAPPacket &packet, IPAddress ip, int port)
             {
                 continue;
             }
+            if (packet.options[i].number == 4)
+            {
+                Serial.println(F("ETAG"));
+
+                if (*packet.options[i].buffer == resources[2].tag)
+                {
+                    coap.sendValidResponse(ip, port, packet.messageId, packet.token, packet.tokenLen);
+                    return;
+                }
+                else
+                {
+                    coap.sendETagResponse(ip, port, packet.messageId, resources[2].value.c_str(), resources[2].tag, packet.token, packet.tokenLen);
+                    //coap.sendResponse(ip, port, packet.messageId, resources[0].value.c_str());
+                    return;
+                }
+            }
             if (packet.options[i].number == 6)
             {
-                Serial.println(F("OBSERVE"));
+                Serial.println(F("OBS"));
                 if (*(packet.options[i].buffer) == 88)
                 {
-                    Serial.println(F("ADD OBSERVER"));
+                    Serial.println(F("ADD OBS"));
                     observers.ip = ip;
                     observers.port = port;
                     observers.counter = 2;
@@ -238,12 +252,13 @@ void callback_keyboard(CoAPPacket &packet, IPAddress ip, int port)
                 }
                 else
                 {
-                    Serial.println(F("REMOVE OBSERVER"));
+                    Serial.println(F("REMOVE OBS"));
                     observers.counter = -1;
                     break;
                 }
             }
         }
+        coap.sendETagResponse(ip, port, packet.messageId, resources[2].value.c_str(), resources[2].tag, packet.token, packet.tokenLen);
     }
 }
 
@@ -310,21 +325,21 @@ void loop()
 
 void getAllResOnStart()
 {
-    Serial.println(F("Sending initial request."));
+    Serial.println(F("Sending init request."));
     payload_t payload{millis(), ALL, GETrf};
     send(payload);
 }
 
 void getLampState()
 {
-    Serial.println(F("Sending lamp state request."));
+    Serial.println(F("Sending lamp request."));
     payload_t payload{millis(), LAMP, GETrf};
     send(payload);
 }
 
 void setLampState(char state)
 { // ON or OFF
-    Serial.print(F("Sending lamp state change to "));
+    Serial.print(F("Sending lamp change to "));
     if (state == ON)
     {
         Serial.println(F("on."));
@@ -342,7 +357,7 @@ void setLampState(char state)
 
 void getKeyboardState()
 {
-    Serial.println(F("Sending keyboard state request."));
+    Serial.println(F("Sending keyboard request."));
     payload_t payload{millis(), KEYBOARD, GETrf};
     send(payload);
 }
@@ -355,7 +370,7 @@ void handlePayload(payload_t payload)
     switch (payload.resource)
     {
     case LAMP:
-        Serial.print(F("Lamp is "));
+        Serial.print(F("Lamp-"));
         switch (payload.value)
         {
         case ON:
@@ -369,21 +384,20 @@ void handlePayload(payload_t payload)
             resources[0].value = "off";
             break;
         default:
-            Serial.println(F("(Unknown lamp state!)."));
             break;
         }
         resources[0].tag++;
         break;
     case KEYBOARD:
         lastKeyPressed = payload.value;
-        Serial.print(F("Keyboard's last key pressed is \""));
+        Serial.print(F("Last key pressed is \""));
         Serial.print(payload.value);
         Serial.println(F("\""));
 
         resources[2].tag++;
         resources[2].value = lastKeyPressed;
         // powiadom obserwatora
-        if (observers.counter != -1)
+        if (observers.counter > 0)
         {
             observers.counter++;
             coap.notifyObserver(observers.ip, observers.port, observers.counter, resources[2].value.c_str(), strlen(resources[2].value.c_str()), observers.token, observers.tokenLen);
