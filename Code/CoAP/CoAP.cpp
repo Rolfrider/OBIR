@@ -79,23 +79,23 @@ uint16_t CoAP::sendPacket(CoAPPacket &packet, IPAddress ip, int port)
         // dlatego po OR z len otrzymamy  dddd llll
         *p++ = (delta << 4 | len); // tutaj jeszcze AND był z 0xFF ale chyba nie potrzebny
         packetSize++;              // zwiekszamy rozmiar
-        if (delta == 13)
+        if (delta == OPTION_DELTA_ONE_BYTE_EXTENDED)
         {
             *p++ = (optDelta - 13); // przypisujemy 8 ostatnich bitow do pakietu
             packetSize++;           // zwiekszamy rozmiar o 1 bajt
         }
-        else if (delta == 14)
+        else if (delta == OPTION_DELTA_TWO_BYTES_EXTENDED)
         {
             *p++ = ((optDelta - 269) >> 8);   // zapisujemy najpierw pierwszy bajt
             *p++ = (0xFF & (optDelta - 269)); // a nastepnie kolejny i obcinamy tylko 8 ostatnich bitow
             packetSize += 2;                  // zwiekszamy o 2
         }
-        if (len == 13)
+        if (len == OPTION_DELTA_ONE_BYTE_EXTENDED)
         { // to samo z dlugoscia pakietu
             *p++ = (packet.options[i].length - 13);
             packetSize++;
         }
-        else if (len == 14)
+        else if (len == OPTION_DELTA_TWO_BYTES_EXTENDED)
         {
             *p++ = (packet.options[i].length >> 8);
             *p++ = (0xFF & (packet.options[i].length - 269));
@@ -190,15 +190,15 @@ int CoAP::parseOption(CoAPOption *option, uint16_t *running_delta, uint8_t **buf
     delta = (p[0] & 0xF0) >> 4; // tak uzyskuje delte
     len = p[0] & 0x0F;          // dlugosc to analogicznie 4 bity po prawej stronie
 
-    if (delta == 13)
+    if (delta == OPTION_DELTA_ONE_BYTE_EXTENDED)
     {
         headLen++;
         if (bufLen < headLen)
             return -1;
-        delta = p[1] + 13;
+        delta = p[1] + OPTION_DELTA_ONE_BYTE_EXTENDED;
         p++;
     }
-    else if (delta == 14)
+    else if (delta == OPTION_DELTA_TWO_BYTES_EXTENDED)
     {
         headLen += 2;
         if (bufLen < headLen)
@@ -209,15 +209,15 @@ int CoAP::parseOption(CoAPOption *option, uint16_t *running_delta, uint8_t **buf
     else if (delta == 15)
         return -1;
 
-    if (len == 13)
+    if (len == OPTION_DELTA_ONE_BYTE_EXTENDED)
     {
         headLen++;
         if (bufLen < headLen)
             return -1;
-        len = p[1] + 13;
+        len = p[1] + OPTION_DELTA_ONE_BYTE_EXTENDED;
         p++;
     }
-    else if (len == 14)
+    else if (len == OPTION_DELTA_TWO_BYTES_EXTENDED)
     {
         headLen += 2;
         if (bufLen < headLen)

@@ -15,7 +15,8 @@ Kod pod wpływem duzej inspiracji z reposytorium: https://github.com/hirotakaste
 #define MAX_OPTION_NUM 10
 #define BUF_MAX_SIZE 70
 #define DEFAULT_PORT 5683
-
+#define OPTION_DELTA_ONE_BYTE_EXTENDED 13
+#define OPTION_DELTA_TWO_BYTES_EXTENDED 14
 /* Operatory bitowe
 << - przesuwa  bity w lewo zmiennej po lewej stronie o liczbe podana po prawej stronie.
 Przyklad:  0011 0010 << 2 => 1100 1000
